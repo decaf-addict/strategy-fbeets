@@ -12,12 +12,14 @@ import {Math} from "@openzeppelin/contracts/math/Math.sol";
 import "../interfaces/BalancerV2.sol";
 import "../interfaces/MasterChef.sol";
 import "../interfaces/Beethoven.sol";
+import "../interfaces/DelegateRegistry.sol";
 
 
 contract Strategy is BaseStrategy {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    IDelegateRegistry public delegateRegistry;
     IBeethovenxMasterChef public masterChef;
     IBalancerVault public bVault;
     IBeetsBar public fBeets;
@@ -51,10 +53,8 @@ contract Strategy is BaseStrategy {
         fBeets.approve(address(masterChef), max);
 
         toggles = Toggles({autocompound : true, abandonRewards : false});
-
+        delegateRegistry = IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
     }
-
-    // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
 
     function name() external view override returns (string memory) {
         return "fbeets compounder";
@@ -223,6 +223,14 @@ contract Strategy is BaseStrategy {
         masterChef.deposit(masterChefPoolId, _fBeets, address(this));
     }
 
+    function setDelegate(bytes32 _id, address _delegate) public onlyVaultManagers {
+        delegateRegistry.setDelegate(_id, _delegate);
+    }
+
+    function clearDelegate(bytes32 _id) public onlyVaultManagers {
+        delegateRegistry.clearDelegate(_id);
+    }
+
 
     // SETTERS //
 
@@ -231,4 +239,7 @@ contract Strategy is BaseStrategy {
         toggles.abandonRewards = _abandon;
     }
 
+    function setDelegateRegistry(address _registry) external onlyGovernance {
+        delegateRegistry = IDelegateRegistry(_registry);
+    }
 }
