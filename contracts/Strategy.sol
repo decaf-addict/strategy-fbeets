@@ -23,7 +23,7 @@ contract Strategy is BaseStrategy {
     IBeethovenxMasterChef public masterChef;
     IBalancerVault public bVault;
     IBeetsBar public fBeets;
-    Toggles public toggles;
+    Params public params;
     IBalancerPool public constant stakeLp = IBalancerPool(0xcdE5a11a4ACB4eE4c805352Cec57E236bdBC3837);
 
     uint public masterChefPoolId;
@@ -32,10 +32,12 @@ contract Strategy is BaseStrategy {
 
     IAsset[] internal assets;
     uint256 internal constant max = type(uint256).max;
+    uint256 internal constant basisOne = 10000;
 
-    struct Toggles {
+    struct Params {
         bool autocompound;
         bool abandonRewards;
+        uint maxSlippageIn;
     }
 
     constructor(address _vault, address _bVault, address _masterChef, uint _masterChefPoolId) public BaseStrategy(_vault) {
@@ -52,7 +54,7 @@ contract Strategy is BaseStrategy {
         stakeLp.approve(address(fBeets), max);
         fBeets.approve(address(masterChef), max);
 
-        toggles = Toggles({autocompound : true, abandonRewards : false});
+        params = Params({autocompound : true, abandonRewards : false, maxSlippageIn : 5});
         delegateRegistry = IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
     }
 
@@ -65,7 +67,7 @@ contract Strategy is BaseStrategy {
     }
 
     function prepareReturn(uint256 _debtOutstanding) internal override returns (uint256 _profit, uint256 _loss, uint256 _debtPayment){
-        if (toggles.autocompound) {
+        if (params.autocompound) {
             _claimRewards();
             _joinPool(balanceOfReward());
             _mintFBeets(balanceOfStakeLp());
@@ -173,7 +175,7 @@ contract Strategy is BaseStrategy {
     function _withdrawFromMasterChef(address _to, uint256 _amount) internal {
         _amount = Math.min(balanceOfWantInMasterChef(), _amount);
         if (_amount > 0) {
-            toggles.abandonRewards
+            params.abandonRewards
             ? masterChef.emergencyWithdraw(masterChefPoolId, address(_to))
             : masterChef.withdrawAndHarvest(masterChefPoolId, _amount, address(_to));
         }
@@ -200,8 +202,10 @@ contract Strategy is BaseStrategy {
             // wftm 0
             // beets 1
             maxAmountsIn[1] = _beets;
+            uint256 beetsLps = _beets.mul(1e18).div(stakeLp.getRate());
+            uint256 expectedLpsOut = beetsLps.mul(basisOne.sub(params.maxSlippageIn)).div(basisOne);
 
-            bytes memory userData = abi.encode(IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, maxAmountsIn, 0);
+            bytes memory userData = abi.encode(IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, maxAmountsIn, expectedLpsOut);
             IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest(assets, maxAmountsIn, userData, false);
             bVault.joinPool(stakeLp.getPoolId(), address(this), address(this), request);
         }
@@ -234,9 +238,11 @@ contract Strategy is BaseStrategy {
 
     // SETTERS //
 
-    function setToggles(bool _autocompound, bool _abandon) external onlyVaultManagers {
-        toggles.autocompound = _autocompound;
-        toggles.abandonRewards = _abandon;
+    function setParams(bool _autocompound, bool _abandon, uint _maxSlippageIn) external onlyVaultManagers {
+        params.autocompound = _autocompound;
+        params.abandonRewards = _abandon;
+        require(_maxSlippageIn <= basisOne, "max 10k!");
+        params.maxSlippageIn = _maxSlippageIn;
     }
 
     function setDelegateRegistry(address _registry) external onlyGovernance {
