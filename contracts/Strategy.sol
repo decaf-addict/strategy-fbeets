@@ -202,10 +202,7 @@ contract Strategy is BaseStrategy {
             // wftm 0
             // beets 1
             maxAmountsIn[1] = _beets;
-            uint256 beetsLps = _beets.mul(1e18).div(stakeLp.getRate());
-            uint256 expectedLpsOut = beetsLps.mul(basisOne.sub(params.maxSlippageIn)).div(basisOne);
-
-            bytes memory userData = abi.encode(IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, maxAmountsIn, expectedLpsOut);
+            bytes memory userData = abi.encode(IBalancerVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, maxAmountsIn, 0);
             IBalancerVault.JoinPoolRequest memory request = IBalancerVault.JoinPoolRequest(assets, maxAmountsIn, userData, false);
             bVault.joinPool(stakeLp.getPoolId(), address(this), address(this), request);
         }
@@ -233,8 +230,7 @@ contract Strategy is BaseStrategy {
 
     function clearDelegate(bytes32 _id) public onlyVaultManagers {
         delegateRegistry.clearDelegate(_id);
-    }
-
+    }   
 
     // SETTERS //
 
