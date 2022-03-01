@@ -37,7 +37,6 @@ contract Strategy is BaseStrategy {
     struct Params {
         bool autocompound;
         bool abandonRewards;
-        uint maxSlippageIn;
     }
 
     constructor(address _vault, address _bVault, address _masterChef, uint _masterChefPoolId) public BaseStrategy(_vault) {
@@ -54,7 +53,7 @@ contract Strategy is BaseStrategy {
         stakeLp.approve(address(fBeets), max);
         fBeets.approve(address(masterChef), max);
 
-        params = Params({autocompound : true, abandonRewards : false, maxSlippageIn : 5});
+        params = Params({autocompound : true, abandonRewards : false});
         delegateRegistry = IDelegateRegistry(0x469788fE6E9E9681C6ebF3bF78e7Fd26Fc015446);
     }
 
@@ -105,7 +104,9 @@ contract Strategy is BaseStrategy {
     }
 
     function adjustPosition(uint256 _debtOutstanding) internal override {
-        _depositIntoMasterChef(balanceOfWant());
+        if (_debtOutstanding > 0) {
+            _depositIntoMasterChef(balanceOfWant());
+        }
     }
 
     function liquidatePosition(uint256 _amountNeeded) internal override returns (uint256 _liquidatedAmount, uint256 _loss){
@@ -230,15 +231,13 @@ contract Strategy is BaseStrategy {
 
     function clearDelegate(bytes32 _id) public onlyVaultManagers {
         delegateRegistry.clearDelegate(_id);
-    }   
+    }
 
     // SETTERS //
 
-    function setParams(bool _autocompound, bool _abandon, uint _maxSlippageIn) external onlyVaultManagers {
+    function setParams(bool _autocompound, bool _abandon) external onlyVaultManagers {
         params.autocompound = _autocompound;
         params.abandonRewards = _abandon;
-        require(_maxSlippageIn <= basisOne, "max 10k!");
-        params.maxSlippageIn = _maxSlippageIn;
     }
 
     function setDelegateRegistry(address _registry) external onlyGovernance {
