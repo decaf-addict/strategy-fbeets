@@ -101,9 +101,7 @@ contract Strategy is BaseStrategy {
     }
 
     function adjustPosition(uint256 _debtOutstanding) internal override {
-        if (_debtOutstanding > 0) {
-            _depositIntoMasterChef(balanceOfWant());
-        }
+        _depositIntoMasterChef(balanceOfWant());
     }
 
     function liquidatePosition(uint256 _amountNeeded) internal override returns (uint256 _liquidatedAmount, uint256 _loss){

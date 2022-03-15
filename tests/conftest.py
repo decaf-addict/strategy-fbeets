@@ -79,10 +79,11 @@ def balancer_vault():
 
 
 @pytest.fixture
-def strategy(strategist, keeper, vault, Strategy, gov, balancer_vault, masterchef):
+def strategy(strategist, keeper, vault, Strategy, gov, balancer_vault, masterchef, chain):
     strategy = strategist.deploy(Strategy, vault, balancer_vault, masterchef, 22)
     strategy.setKeeper(keeper)
     vault.addStrategy(strategy, 10_000, 0, 2 ** 256 - 1, 1_000, {"from": gov})
+    chain.sleep(1)
     yield strategy
 
 
