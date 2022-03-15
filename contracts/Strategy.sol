@@ -6,7 +6,7 @@ pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
 import {BaseStrategy, StrategyParams} from "@yearnvaults/contracts/BaseStrategy.sol";
-import {SafeERC20, SafeMath, IERC20, Address} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import {IERC20, Address} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Math} from "@openzeppelin/contracts/math/Math.sol";
 import "../interfaces/BalancerV2.sol";
@@ -16,9 +16,6 @@ import "../interfaces/DelegateRegistry.sol";
 
 
 contract Strategy is BaseStrategy {
-    using SafeERC20 for IERC20;
-    using SafeMath for uint256;
-
     IDelegateRegistry public delegateRegistry;
     IBeethovenxMasterChef public masterChef;
     IBalancerVault public bVault;
@@ -214,7 +211,9 @@ contract Strategy is BaseStrategy {
     }
 
     function _mintFBeets(uint _bpts) internal {
-        fBeets.enter(_bpts);
+        if (_bpts > 0) {
+            fBeets.enter(_bpts);
+        }
     }
 
     function depositIntoMasterChef(uint _fBeets) external onlyVaultManagers {
@@ -222,7 +221,9 @@ contract Strategy is BaseStrategy {
     }
 
     function _depositIntoMasterChef(uint _fBeets) internal {
-        masterChef.deposit(masterChefPoolId, _fBeets, address(this));
+        if (_fBeets > 0) {
+            masterChef.deposit(masterChefPoolId, _fBeets, address(this));
+        }
     }
 
     function setDelegate(bytes32 _id, address _delegate) public onlyVaultManagers {
